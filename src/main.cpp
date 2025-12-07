@@ -17,9 +17,10 @@
  * Each pixel is an RGB triplet (red, green, blue values).
  */
 
+#include "color.h"
+#include "vec3.h"
+
 #include <iostream>
-using std::cout;
-using std::endl;
 
 int main() {
     // Image dimensions and color range
@@ -28,31 +29,21 @@ int main() {
     double channel_range = 255.0;  // Max value for each RGB channel (typically 255)
 
     // Render the PPM header
-    cout << "P3\n"             // Format identifier (ASCII colors)
+    std::cout << "P3\n"             // Format identifier (ASCII colors)
          << image_width << ' '  // Width
          << image_height << '\n'// Height
          << channel_range       // Max channel value
-         << endl;
+         << std::endl;
 
     // Generate pixels row by row (top to bottom)
     for (int row = 0; row < image_height; row++) {
         // Generate pixels column by column (left to right)
         for (int col = 0; col < image_width; col++) {
-            // Normalize coordinates to [0, 1] range
-            // Red varies based on column: 0 (left, black) to 1 (right, full red)
-            double r = static_cast<double>(col) / (image_width - 1);
-            // Green varies based on row: 0 (top, black) to 1 (bottom, full green)
-            double g = static_cast<double>(row) / (image_height - 1);
-            // Blue is fixed at 0 (no blue component)
-            double b = 0.0;
+		auto pixel_color = color(static_cast<double>(col) / (image_width- 1), 
+					 static_cast<double>(row) / (image_height- 1), 
+					 0);
+		write_color(std::cout, pixel_color);
 
-            // Scale normalized values to the channel range (0-255)
-            int ir = static_cast<int>(r * channel_range);
-            int ig = static_cast<int>(g * channel_range);
-            int ib = static_cast<int>(b * channel_range);
-
-            // Output the pixel in PPM format (space-separated RGB)
-            cout << ir << ' ' << ig << ' ' << ib << endl;
         }
     }
 
