@@ -77,7 +77,7 @@ class vec3 {
 	    }
 };
 
-using point3 = vect3;
+using point3 = vec3;
 
 /* Non-member utilities */
 // Placed outside class for ADL(Argument-Dependent-Lookup) and symmetric scalar ops
