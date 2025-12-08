@@ -1,5 +1,4 @@
 # Full Makefile Example with src directory
-
 # Variables
 CXX = g++
 CXXFLAGS = -Wall -Wextra
@@ -8,6 +7,7 @@ TARGET = my_cpp_program
 SRC_DIR = src
 SRCS = $(SRC_DIR)/main.cpp
 OBJS = $(SRCS:.cpp=.o)
+HEADERS = $(wildcard $(INCLUDE_DIR)/*.h)
 
 # Tell 'make' to look in the src directory for source files
 VPATH = $(SRC_DIR)
@@ -17,11 +17,10 @@ $(TARGET): $(OBJS)
 	$(CXX) $(OBJS) -o $(TARGET)
 
 # Compilation rule: uses the VPATH setting to find the .cpp file
-%.o: %.cpp
+%.o: %.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
 
 # Clean up generated files
 .PHONY: clean
 clean:
 	rm -f $(OBJS) $(TARGET)
-
