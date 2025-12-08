@@ -1,8 +1,8 @@
 #ifndef VEC3_H
 #define VEC3_H
 
-#include <cmath>     // For std::sqrt in length()
-#include <iostream>  // For std::ostream in operator<<
+#include "rtweekend.h"
+
 #include <stdexcept> // For std::out_of_range in bounds-checked access and std::domain_error in div checks
 #include <limits>    // For std::numeric_limits in near-zero checks
 

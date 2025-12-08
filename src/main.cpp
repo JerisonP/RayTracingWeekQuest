@@ -17,100 +17,71 @@
  * Each pixel is an RGB triplet (red, green, blue values).
  */
 
-#include "color.h"
-#include "vec3.h"
-#include "ray.h"
+#include "rtweekend.h"  // For shared utilities and constants; centralizes common definitions to avoid redundancy across files.
+#include "hittable.h"   // For hit interface; supports polymorphic scene composition.
+#include "hittable_list.h"  // For aggregate objects; enables building complex scenes from primitives.
+#include "sphere.h"     // For sphere geometry; chosen as a simple primitive for initial testing and extension.
 
-#include <iostream>
-
-auto blue  = color(0, 0, 1);
-auto green = color(0, 1, 0);
-auto red   = color(1, 0, 0);
-
-auto yello = color(1, 1, 0);
-auto magenta = color(1, 0, 1);
-auto cyan = color(0, 1, 1);
-
-auto white = color(1, 1, 1);
-auto black = color(0, 0, 0);
-
-// Placeholder for scene-dependent coloring; designed as a pure function to facilitate future extensions like shading models without side effects.
-
-/*color ray_color(const ray& r) {
-    const vec3& dir = r.direction();
-    double fake_length = std::sqrt(dir.y() * dir.y() + dir.z() * dir.z());
-    double unit_y = (fake_length > 0.0) ? dir.y() / fake_length : 0.0;  // Avoid div-by-zero, though unlikely here.
-    auto a = 0.5 * (unit_y + 1.0);
-    return (1.0 - a) * color(1.0, 1.0, 1.0) + a * color(0.5, 0.7, 1.0);
-}
-*/
-
-bool hit_sphere(const point3& center, double radius, const ray& r) {
-	vec3 oc = center - r.origin();
-	auto a = dot(r.direction(), r.direction());
-	auto b = -2.0 * dot(r.direction(), oc);
-	auto c = dot(oc, oc) - radius * radius;
-	auto discriminant = b*b - 4*a*c;
-	return (discriminant >= 0);
+/* Ray Coloring */
+// Computes color via intersection or fallback gradient; designed as a hook for future material and lighting models, using hittable reference for scene modularity.
+color ray_color(const ray& r, const hittable& world) {
+    hit_record rec;
+    if (world.hit(r, interval(0, infinity), rec)) {
+        // Simple normal-based shading for visualization; remaps to [0,1] range for positive colors, aiding debug of surface orientations.
+        return 0.5 * (rec.normal + color(1,1,1));
+    }
+    vec3 unit_direction = unit_vector(r.direction());
+    auto a = 0.5*(unit_direction.y() + 1.0);
+    return (1.0-a)*color(1.0, 1.0, 1.0) + a*color(0.5, 0.7, 1.0);
 }
 
-color ray_color(const ray& r) {
-	vec3 unit_direction = unit_vector(r.direction());
-	if (hit_sphere(point3(0, 0, -1), 0.5, r))
-	{
-		auto a = 0.5 * (unit_direction.y() - unit_direction.x() + 1.0);
-		return (1.0 - a)*green+ a*blue;
-	}
-
-	auto a = 0.5 * (unit_direction.y() + 2.0);
-	return (1.0-a)*white + a*(color(0.5, 0.7, 1.0));
-}
-
-
-// Main function orchestrates setup and rendering; uses automatic variables for stack allocation to minimize dynamic memory overhead.
+/* Main Entry Point */
+// Orchestrates scene setup, camera, and rendering; uses local scopes for clarity and to minimize global state.
 int main() {
-    double channel_range = 255.0; // Fixed at 255 for standard 8-bit color depth compatibility.
-
     /* Image Setup */
-    // Aspect ratio and width chosen for development; height derived to preserve proportions and avoid distortion.
+    // Aspect ratio and width fixed for development; height derived to maintain proportions without distortion.
     auto aspect_ratio = 16.0 / 9.0;
-    int image_width = 800;
-    int image_height = static_cast<int>(image_width / aspect_ratio);
+    int image_width = 400;
+    int image_height = int(image_width / aspect_ratio);
     image_height = (image_height < 1) ? 1 : image_height;
 
+    /* Scene Setup */
+    // List-based world for easy addition of objects; starts with basic spheres for ground and foreground to test intersections.
+    hittable_list world;
+    world.add(make_shared<sphere>(point3(0,0,-1), 0.5));
+    world.add(make_shared<sphere>(point3(0,-100.5,-1), 100));
+
     /* Camera Setup */
-    // Simple pinhole camera model with fixed parameters for baseline implementation; viewport sized for 90-degree FOV.
+    // Pinhole model with fixed params for simplicity; viewport scaled for 90-degree FOV, centered at origin for symmetric views.
     auto focal_length = 1.0;
     auto viewport_height = 2.0;
-    auto viewport_width = viewport_height * (static_cast<double>(image_width) / image_height);
+    auto viewport_width = viewport_height * (double(image_width)/image_height);
     auto camera_center = point3(0, 0, 0);
     auto viewport_u = vec3(viewport_width, 0, 0);
     auto viewport_v = vec3(0, -viewport_height, 0);
-    // Deltas precomputed to optimize loop performance by reducing per-pixel calculations.
+    // Deltas precomputed to reduce per-pixel math, enhancing loop efficiency.
     auto pixel_delta_u = viewport_u / image_width;
     auto pixel_delta_v = viewport_v / image_height;
-    // Half-pixel offset applied for center-sampled rays, reducing aliasing in this orthographic-like setup.
-    auto viewport_upper_left = camera_center - vec3(0, 0, focal_length) - viewport_u / 2 - viewport_v / 2;
+    // Half-pixel offset for center sampling; minimizes aliasing in basic setup.
+    auto viewport_upper_left = camera_center - vec3(0, 0, focal_length) - viewport_u/2 - viewport_v/2;
     auto pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
     /* Render Header */
-    // Header uses text format for simplicity and portability across systems.
-    std::cout << "P3\n"
-              << image_width << ' '
-              << image_height << '\n'
-              << channel_range
-              << std::endl;
+    // Text-based PPM for portability; outputs to stdout for easy redirection.
+    std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
 
     /* Render Loop */
-    // Row-major order matches PPM specification; nested loops for straightforward parallelization potential.
-    for (int row = 0; row < image_height; row++) {
-        for (int col = 0; col < image_width; col++) {
-            auto pixel_center = pixel00_loc + (col * pixel_delta_u) + (row * pixel_delta_v);
+    // Row-major iteration matches PPM order; supports future parallelization via threading.
+    for (int j = 0; j < image_height; j++) {
+        // Progress logging to stderr; decouples from image output for clean PPM files.
+        std::clog << "\rScanlines remaining: " << (image_height - j) << ' ' << std::flush;
+        for (int i = 0; i < image_width; i++) {
+            auto pixel_center = pixel00_loc + (i * pixel_delta_u) + (j * pixel_delta_v);
             auto ray_direction = pixel_center - camera_center;
             ray r(camera_center, ray_direction);
-            color pixel_color = ray_color(r);
+            color pixel_color = ray_color(r, world);
             write_color(std::cout, pixel_color);
         }
     }
-    return 0;
+    std::clog << "\rDone.                 \n";
 }
