@@ -3,8 +3,8 @@
 
 #include "rtweekend.h"
 
-#include <stdexcept> // For std::out_of_range in bounds-checked access and std::domain_error in div checks
-#include <limits>    // For std::numeric_limits in near-zero checks
+#include <stdexcept> 
+#include <limits>    
 
 /*
  * A 3D vector class optimized for graphics/math computations.
@@ -18,8 +18,8 @@ class vec3 {
 
 	public:
 	    /* Constructors */
-	    vec3() : e{0, 0, 0} {}  // Default (zero-init for safe default behavior in ops)
-	    vec3(double e0, double e1, double e2) : e{e0, e1, e2} {}  // Parameterized (explicit component control)
+	    vec3() : e{0, 0, 0} {}  
+	    vec3(double e0, double e1, double e2) : e{e0, e1, e2} {}  
 
 	    /* Component accessors */
 	    // Inlined for low-overhead access in performance-critical code
@@ -74,6 +74,16 @@ class vec3 {
 	    }
 	    double length_squared() const {
 		return e[0]*e[0] + e[1]*e[1] + e[2]*e[2];
+	    }
+
+	    /* just changed this |
+	     * 			 v */
+	    static vec3 random() {
+		    return vec3(random_double(), random_double(), random_double());
+	    }
+
+	    static vec3 random(double min, double max) {
+		    return vec3(random_double(min,max), random_double(min,max), random_double(min,max));
 	    }
 };
 
@@ -130,6 +140,26 @@ inline vec3 unit_vector(const vec3& v) {
         throw std::domain_error("div-by-zero or length too small");
     }
     return v / len;
+}
+
+inline vec3 random_unit_vector() {
+	while (true) {
+		auto p = vec3::random(-1,1);
+		auto lensq = p.length_squared();
+		if (1e-160 < lensq && lensq <= 1)	{
+			return p / sqrt(lensq);
+		}
+	}
+}
+
+inline vec3 random_on_hemisphere(const vec3& normal) {
+	vec3 on_unit_sphere = random_unit_vector();
+	if (dot(on_unit_sphere, normal) > 0.0 ) {
+		return on_unit_sphere;
+	}
+	else {
+		return -on_unit_sphere;
+	}
 }
 
 #endif
