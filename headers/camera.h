@@ -60,16 +60,37 @@ class camera {
 
 	    	color ray_color(const ray& r, int depth, const hittable& world) const {
 			if (depth <= 0) {
-				return color(0,0,0);
-			}
-			hit_record rec; 
-			if (world.hit(r, interval(0.001, infinity), rec)) {
-				vec3 direction = rec.normal + random_unit_vector();
-				return 0.1 * ray_color(ray(rec.p, direction), depth - 1, world);
+				return color(0, 0, 0);
 			}
 
-			vec3 unit_direction = unit_vector(r.direction());
-			auto a = 0.5*(unit_direction.y() + 1.0);
+			// gama level splitter 
+			vec3 unit_direction = unit_vector(vec3(r.direction().x(), 0, r.direction().z()));
+			double b;
+			if (unit_direction.x() > 0.5 ) {
+				b = 0.9;	
+			}
+			else if (0.5 >= unit_direction.x() && unit_direction.x() > 0.0) {
+				b = 0.5;
+			}
+			else if (0.0 >= unit_direction.x() && unit_direction.x() > -0.5) {
+				b = 0.3;
+			}
+			else {
+				b = 0.1;	
+			}
+			
+
+			hit_record rec; 
+			if (world.hit(r, interval(0.001, infinity), rec)) {
+				// worse defuse model but here for testing
+				// vec3 direction = random_on_hemisphere(rec.normal);
+			
+				vec3 direction = rec.normal + random_unit_vector();
+		    		return b * ray_color(ray(rec.p, direction), depth - 1, world);
+			}
+
+			// vec3 unit_direction = unit_vector(r.direction());
+			auto a = b*(unit_direction.y() + 1.0);
 			return (1.0-a)*color(1.0, 1.0, 1.0) + a*color(0.5, 0.7, 1.0);
 	    }
 	
